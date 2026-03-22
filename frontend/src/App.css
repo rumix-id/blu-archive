@@ -1,0 +1,758 @@
+:root {
+  --bg-app: #f0f2f5;
+  --bg-card: #ffffff;
+  --text-main: #1c1e21;
+  --text-sub: #65676b;
+  --primary: #007bff;
+  --primary-hover: #0056b3;
+  --danger: #dc3545;
+  --border: #dddfe2;
+}
+
+* { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: var(--bg-app);
+}
+
+/* --- HEADER --- */
+.main-header {
+
+  padding: 20px 40px; 
+  background-color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  transition: all 0.3s ease;
+}
+
+.header-left { 
+  display: flex; 
+  align-items: center; 
+}
+
+.header-titles { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: flex-start; 
+}
+
+.title { 
+  font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 1.3rem; 
+  font-weight: 800;
+  font-style: italic; 
+  color: #000000;
+  line-height: 1.2; 
+  margin: 0;
+  letter-spacing: -0.5px;    
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.blue-part {
+  color: #007bff;
+}
+
+.version-text { 
+  font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 0.7rem; 
+  color: var(--text-sub); 
+  margin: 0;
+  text-align: left;
+  font-style: bold;
+}
+
+
+
+.btn-import { 
+  padding: 8px 16px; 
+  background: var(--primary); 
+  color: white; 
+  border: none; 
+  border-radius: 6px; 
+  cursor: pointer; 
+  font-weight: 500;
+}
+.btn-import:hover { background: var(--primary-hover); }
+
+/* --- MENU MENGAMBANG (SETTINGS) --- */
+.settings-wrapper {
+  display: flex;
+  align-items: center;
+  height: 100%; 
+}
+
+.settings-dropdown {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  width: 250px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  padding: 15px;
+  z-index: 2000;
+}
+.dropdown-section label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 8px; color: var(--text-sub); }
+.search-input-dropdown { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg-app); }
+.dropdown-divider { height: 1px; background: var(--border); margin: 12px 0; }
+.toggle-group { display: flex; gap: 6px; }
+.toggle-group button { flex: 1; padding: 7px; border: 1px solid var(--border); background: white; cursor: pointer; border-radius: 5px; font-size: 0.85rem; }
+.toggle-group button.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+/* --- MAIN CONTENT & GRID --- */
+.content-area { flex: 1; overflow-y: auto; padding: 24px; }
+
+.video-grid {
+    display: grid;
+    gap: 20px;
+    padding: 20px;
+}
+
+/* --- KARTU VIDEO (GLOBAL) --- */
+.video-card {
+  background: var(--bg-card);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: transform 0.2s;
+}
+.video-card:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+
+
+/* ==========================================================
+   MODE GRID (Compact) - Hanya Thumbnail 16:9 Tanpa Judul
+   ========================================================== */
+.video-grid.compact {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+.compact .video-card {
+    display: flex;
+    flex-direction: column;
+    background: transparent;
+    box-shadow: none;
+}
+.compact .cover-box {
+    width: 100%;
+    aspect-ratio: 16 / 9; 
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    cursor: pointer;
+}
+/* SEMBUNYIKAN JUDUL DI MODE GRID */
+.compact .video-info-container {
+    display: none; 
+}
+
+
+/* ==========================================================
+   MODE LIST (Comfortable) - Poster 3:4 + Info di Bawah
+   ========================================================== */
+.video-grid.comfortable {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
+}
+
+.comfortable .video-card {
+    display: flex;
+    flex-direction: column; 
+    align-items: stretch;
+    background: var(--bg-card);
+    padding: 0; 
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.comfortable .cover-box {
+    width: 100%; 
+    min-width: auto; 
+    aspect-ratio: 3 / 4; 
+    position: relative;
+    overflow: hidden;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    cursor: pointer;
+}
+
+/* TAMPILKAN JUDUL DI BAWAH GAMBAR */
+.comfortable .video-info-container {
+    display: flex;
+    flex-direction: column;
+    padding: 12px; 
+    cursor: pointer; 
+    text-align: left;
+}
+
+/* ==========================================================
+   STYLING GAMBAR & OVERLAY PLAY
+   ========================================================== */
+.cover-box img { 
+  width: 100%; 
+  height: 100%; 
+  object-fit: cover; 
+  display: block;
+  transition: transform 0.3s ease;
+}
+.play-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.3);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.cover-box:hover .play-overlay {
+    opacity: 1;
+}
+.play-icon { 
+    background: rgba(255,255,255,0.8); color: black; border-radius: 50%; 
+    width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; 
+    font-size: 1.2rem; padding-left: 4px; 
+}
+.comfortable .cover-box img {
+    object-position: right center;
+}
+
+/* ==========================================================
+   TYPOGRAPHY INFO TEKS
+   ========================================================== */
+.video-title-card { 
+  font-size: 0.95rem; 
+  font-weight: 600; 
+  color: var(--text-main); 
+  margin: 0 0 6px 0; 
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+  text-align: left !important; 
+}
+.video-meta-card { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center;
+  width: 100%; 
+  font-size: 0.8rem; 
+  color: var(--text-sub); 
+  margin-top: 4px;
+}
+.video-artist-card {
+  margin-left: auto; 
+  text-align: right;
+  font-style: italic; 
+  opacity: 0.8;
+}
+
+/* ==========================================================
+   --- CONTEXT MENU (KLIK KANAN) MODERN BRIGHT THEME ---
+   ========================================================== */
+.custom-context-menu {
+  position: fixed; 
+  z-index: 9999; 
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  width: 180px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* HEADER OPSIONAL MENU */
+.context-menu-header {
+  font-size: 0.75rem;
+  color: #888;
+  padding: 6px 12px;
+  user-select: none;
+}
+
+/* ITEM MENU KONTEKS */
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  color: #1a1a1a;
+  cursor: pointer;
+  border-radius: 8px; /* Highlighting membulat di dalam */
+  transition: background 0.1s ease;
+  user-select: none;
+  gap: 12px; /* Jarak antara ikon dan teks */
+}
+
+/* EFEK HOVER TERANG */
+.context-menu-item:hover {
+  background-color: #f2f2f2;
+}
+
+/* GAYA IKON (Unicode) */
+.menu-item-icon {
+  font-size: 1.1rem;
+  color: #555;
+  width: 1.2rem;
+  text-align: center;
+}
+
+/* GAYA TEKS */
+.menu-item-text {
+  font-size: 0.9rem;
+  color: #1a1a1a;
+}
+
+/* SEPARATOR GARIS */
+.context-menu-separator {
+  border-top: 1px solid #e5e5e5;
+  margin: 6px 0;
+}
+
+/* GAYA KHUSUS HAPUS (Merah) */
+.context-menu-item.delete {
+  color: #e74c3c;
+}
+
+.context-menu-item.delete:hover {
+  background-color: #fcebe9;
+}
+
+.context-menu-item.delete .menu-item-icon,
+.context-menu-item.delete .menu-item-text {
+  color: #e74c3c;
+}
+
+/* ==========================================================
+   --- POP-UP DETAIL VIEW MODERN BRIGHT THEME ---
+   ---         MODIFIED BASED ON target.jpg       ---
+   ========================================================== */
+/* OVERLAY GELAP DI BELAKANG POP-UP */
+.detail-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 6000;
+  padding: 20px;
+}
+
+/* KOTAK POP-UP UTAMA (Terang & Modern) */
+.detail-container {
+  background: #ffffff;
+  border-radius: 20px;
+  width: 1050px; 
+  max-width: 95vw;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
+  position: relative;
+  padding: 30px; 
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+/* TOMBOL CLOSE (SILANG) */
+.btn-close-detail-circle {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: #f0f2f5;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #555;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.btn-close-detail-circle:hover {
+  background: #e4e6eb;
+  color: #dc3545; 
+}
+
+.detail-content-layout {
+  display: flex;
+  gap: 30px;
+  align-items: stretch;
+}
+
+.detail-left-poster {
+  flex: 0 0 340px; 
+}
+
+.poster-wrapper {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  background-color: #000;
+}
+
+.poster-wrapper img {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 3 / 4; 
+  object-fit: cover;
+  object-position: left center; 
+  display: block;
+}
+
+.poster-play-overlay {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.85);
+  color: #1a1a1a;
+  width: 50px; height: 50px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 20px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.poster-wrapper:hover .poster-play-overlay {
+  opacity: 1; 
+}
+
+.detail-right-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.detail-title-large {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #1c1e21;
+  margin: 0 0 5px 0;
+  line-height: 1.2;
+}
+
+.detail-duration-left {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #007bff;
+  margin-bottom: 15px;
+}
+
+.detail-description-justify {
+  font-size: 0.95rem;
+  color: #444;
+  line-height: 1.6;
+  text-align: justify; 
+  margin-bottom: 20px;
+  max-height: 200px;
+  overflow-y: auto;
+  -ms-overflow-style: none;  
+  scrollbar-width: none;  
+}
+
+.detail-description-justify::-webkit-scrollbar {
+    display: none;
+}
+
+.info-item-artist, .info-item-year {
+  font-size: 0.95rem;
+  color: #555;
+  margin-bottom: 4px;
+  font-weight: normal; 
+}
+
+.detail-action-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  align-self: flex-start;
+}
+
+.btn-screenshot-view {
+  padding: 10px 24px;
+  background-color: #f0f2f5;
+  color: #1c1e21;
+  border: 1px solid #dddfe2;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-edit-large {
+  padding: 10px 24px;
+  background-color: #f0f2f5;
+  color: #1c1e21;
+  border: 1px solid #dddfe2;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-screenshot-add {
+  padding: 10px 20px;
+  height: 42px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #dddfe2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap; 
+  flex: 0 1 auto;    
+}
+
+.btn-screenshot-add {
+  background-color: #ffffff;
+  color: #1c1e21;
+}
+
+.btn-screenshot-add:hover {
+  background-color: #f2f3f5;
+}
+
+.btn-edit-large:hover {
+  background-color: #e4e6eb;
+  border-color: #ccc;
+}
+
+/* Animasi Muncul Pop Up */
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================
+   --- MODALS (EDIT & DELETE) ---
+   ========================================================== */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; }
+.delete-z-index { z-index: 7500; }
+.edit-z-index { z-index: 7000; }
+
+.modal-content { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+.confirm-modal { width: 400px; text-align: center; }
+.confirm-modal h3 { margin-bottom: 10px; color: var(--text-main); }
+.confirm-modal p { margin-bottom: 20px; color: var(--text-sub); font-size: 0.95rem; }
+
+.edit-large-modal { width: 600px; }
+.edit-large-modal h2 { margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+
+.edit-form-grid {
+  display: flex;
+  flex-direction: column; 
+  gap: 15px;            
+  width: 100%;
+  text-align: left;       
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column; 
+  align-items: flex-start;
+  width: 100%;
+}
+
+.input-group label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-sub);
+  margin-bottom: 5px;    
+  text-align: left;
+}
+
+.input-group input, 
+.input-group textarea {
+  width: 100%;            
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  background-color: #fff;
+  color: var(--text-main);
+  outline: none;
+  text-align: left;    
+}
+
+.input-group input:focus, 
+.input-group textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+.full-width {
+  width: 100%;
+}
+
+
+
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.btn-cancel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;     
+  padding: 0 16px;  
+  background: #e4e6eb;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-cancel:hover {
+  background: #d8dadf;
+}
+
+.btn-save {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;    
+  padding: 0 16px;  
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-save:hover {
+  background: var(--primary-hover);
+}
+
+.btn-danger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;      
+  padding: 0 16px;   
+  background: var(--danger);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+
+.modal-content.confirm-modal h2 {
+  border-bottom: none !important; 
+  margin-bottom: 10px;
+  font-size: 1.2rem;
+}
+
+.modal-content.edit-large-modal h2 {
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #f9f9f9;
+  outline: none;
+}
+
+.input-group input:focus {
+  border-color: var(--primary);
+  background: #fff;
+}
+
+.modal-content.small-modal .modal-actions {
+  justify-content: center;
+}
+
+.video-card .video-info h3 {
+  text-align: left !important;
+  margin: 0;
+  padding: 5px 0;
+  font-size: 0.95rem;
+  color: var(--text-main);
+}
+
+.video-card .video-info p {
+  text-align: left !important;
+  font-size: 0.8rem;
+  color: var(--text-sub);
+}
+
+::-webkit-scrollbar {
+  display: none; 
+  width: 0;
+  height: 0;
+}
+
+* {
+  -ms-overflow-style: none; 
+  scrollbar-width: none; 
+}
+
+.btn-icon-menu {
+
+  width: 38px;
+  height: 38px;
+  
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.05);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  color: var(--text-main);
+  font-size: 1.4rem; 
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  transition: background-color 0.2s;
+}
+
+.btn-icon-menu:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+
+.btn-import {
+  display: flex;
+  align-items: center;
+  height: 38px; 
+  padding: 0 15px;
+}
+.header-right {
+  display: flex;
+  align-items: center; 
+  gap: 8px;
+}

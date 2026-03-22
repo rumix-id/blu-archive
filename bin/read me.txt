@@ -1,0 +1,3 @@
+Download ffmpeg.exe and ffprobe.exe then place the program here
+
+https://ffbinaries.com/downloads
