@@ -42,7 +42,7 @@ wails dev
 ```bash
 wails build -clean
 ```
----
+```
 📂 blu-archive/
 ├── bin/                   # Binary file location to embed
 │ ├── ffmpeg.exe           # FFmpeg for video processing
@@ -69,5 +69,6 @@ wails build -clean
 ├── wails.json             # Wails project configuration
 ├── .gitignore             # List of disallowed files uploaded
 └── README.md              # Project documentation
+```
 ---
 Built with ❤️ by **Rumix Tools**
