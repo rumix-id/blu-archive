@@ -42,8 +42,9 @@ wails dev
 ```bash
 wails build -clean
 ```
+
+## 📂 blu-archive/
 ```
-📂 blu-archive/
 ├── bin/                   # Binary file location to embed
 │ ├── ffmpeg.exe           # FFmpeg for video processing
 │ ├── ffprobe.exe          # FFprobe for duration checking
