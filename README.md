@@ -5,7 +5,7 @@
 ![Go](https://img.shields.io/badge/backend-Go-00ADD8?logo=go)
 ![React](https://img.shields.io/badge/frontend-React-61DAFB?logo=react)
 
-**BLU. ARCHIVE** is a personal video gallery management desktop application built using **Wails v2**, **Go**, and **React**. This application allows you to manage your local video collection with a modern interface inspired by minimalist.
+**BLU. ARCHIVE** is a personal video gallery management desktop application built using **Wails v2**, **Go**, and **React**. This application allows you to manage your local video collection with a modern interface minimalist.
 
 ## ✨ Key Features
 * **Auto Thumbnail Generation**: Automatically capture screenshots from videos using FFmpeg.
@@ -42,7 +42,7 @@ wails dev
 ```bash
 wails build -clean
 ```
-## blu-archive/
+📂 blu-archive/
 ├── bin/                   # Binary file location to embed
 │ ├── ffmpeg.exe           # FFmpeg for video processing
 │ ├── ffprobe.exe          # FFprobe for duration checking
