@@ -11,11 +11,9 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
 
-//go:embed all:frontend/dist
 var assets embed.FS
 
 func main() {
-	// Dapatkan lokasi absolut folder .exe
 	ex, _ := os.Executable()
 	exPath := filepath.Dir(ex)
 
@@ -26,8 +24,7 @@ func main() {
 		Height:        768,
 		DisableResize: true,
 		AssetServer: &assetserver.Options{
-			Assets: assets,
-			// Handler ini kunci agar video bisa diputar
+			Assets:  assets,
 			Handler: http.FileServer(http.Dir(exPath)),
 		},
 		OnStartup: app.startup,

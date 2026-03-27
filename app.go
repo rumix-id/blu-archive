@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -37,6 +38,9 @@ type Video struct {
 	Description    string `json:"description"`
 	ReleaseYear    string `json:"releaseYear"`
 	ScreenshotPath string `json:"screenshotPath"`
+	IsFavorite     bool   `json:"is_favorite"`
+	LastPlayedAt   string `json:"last_played_at"`
+	IsGroup        int    `json:"is_group"`
 }
 
 type App struct {
@@ -49,7 +53,7 @@ func NewApp() *App {
 
 func (a *App) SelectFolder() (string, error) {
 	selection, err := wailsRuntime.OpenFileDialog(a.ctx, wailsRuntime.OpenDialogOptions{
-		Title: "Pilih Gambar Screenshot",
+		Title: "Select Screenshot Image",
 		Filters: []wailsRuntime.FileFilter{
 			{
 				DisplayName: "Images (*.png;*.jpg;*.jpeg;*.webp)",
@@ -87,15 +91,15 @@ func (a *App) OpenFolder(path string) error {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-
+	initDB()
 	ex, _ := os.Executable()
 	exPath := filepath.Dir(ex)
 	os.Chdir(exPath)
 
 	os.MkdirAll("movie", 0755)
 	os.MkdirAll("cover", 0755)
-	os.MkdirAll("screenshots", 0755)
 	os.MkdirAll("bin", 0755)
+	os.MkdirAll("Episode", 0755)
 
 	if runtime.GOOS == "windows" {
 		ffprobePath := filepath.Join("bin", "ffprobe.exe")
@@ -109,8 +113,6 @@ func (a *App) startup(ctx context.Context) {
 			}
 		}
 	}
-
-	initDB()
 }
 func getDurationWithFFmpeg(ffmpegPath, videoPath string) string {
 	cmd := exec.Command(ffmpegPath, "-i", videoPath)
@@ -191,7 +193,7 @@ func (a *App) ImportVideo() error {
 	exPath := filepath.Dir(ex)
 
 	filePath, err := wailsRuntime.OpenFileDialog(a.ctx, wailsRuntime.OpenDialogOptions{
-		Title:   "Pilih Video",
+		Title:   "Select Video",
 		Filters: []wailsRuntime.FileFilter{{DisplayName: "Videos", Pattern: "*.mp4;*.mkv;*.avi"}},
 	})
 	if err != nil || filePath == "" {
@@ -249,15 +251,19 @@ func (a *App) extractThumbnail(ffmpegPath string, videoPath string, destPath str
 
 	return cmd.Run()
 }
-
-func (a *App) RenameVideo(id int, oldVideoPath string, newTitle string) error {
-	var artist, desc, year, oldCoverPath, oldScreenshotPath string
-	err := db.QueryRow("SELECT artist, description, release_year, cover_path, screenshot_path FROM videos WHERE id = ?", id).
-		Scan(&artist, &desc, &year, &oldCoverPath, &oldScreenshotPath)
+func (a *App) RenameVideo(id int, oldVideoPath string, newTitle string, newArtist string) error {
+	var oldArtist, desc, year, oldCoverPath, oldScreenshotPath string
+	var isGroup int
+	err := db.QueryRow("SELECT artist, description, release_year, cover_path, screenshot_path, is_group FROM videos WHERE id = ?", id).
+		Scan(&oldArtist, &desc, &year, &oldCoverPath, &oldScreenshotPath, &isGroup)
 	if err != nil {
 		return err
 	}
-
+	var count int
+	db.QueryRow("SELECT COUNT(*) FROM videos WHERE title = ? AND id != ?", newTitle, id).Scan(&count)
+	if count > 0 {
+		return fmt.Errorf("Title '%s' already exists in your collection.", newTitle)
+	}
 	newTitleClean := strings.ReplaceAll(newTitle, " ", "_")
 	reg, _ := regexp.Compile(`[\\/:*?"<>|]`)
 	newTitleClean = reg.ReplaceAllString(newTitleClean, "")
@@ -265,16 +271,29 @@ func (a *App) RenameVideo(id int, oldVideoPath string, newTitle string) error {
 	finalVideo := oldVideoPath
 	finalCover := oldCoverPath
 	finalScreenshot := oldScreenshotPath
+	if isGroup == 1 {
+		oldFolder := filepath.Join(".", strings.TrimPrefix(oldVideoPath, "/"))
+		newFolder := filepath.Join("Episode", newTitleClean)
 
-	if oldVideoPath != "" {
-		cleanOldVideo := filepath.Join(".", strings.TrimPrefix(oldVideoPath, "/"))
-		extVideo := filepath.Ext(cleanOldVideo)
-		newVideoFullPath := filepath.Join("movie", newTitleClean+extVideo)
-		if cleanOldVideo != newVideoFullPath {
-			if err := os.Rename(cleanOldVideo, newVideoFullPath); err == nil {
-				finalVideo = "/" + filepath.ToSlash(newVideoFullPath)
-			} else {
-				println("Gagal rename video fisik:", err.Error())
+		if oldFolder != newFolder {
+			if _, err := os.Stat(oldFolder); err == nil {
+				if err := os.Rename(oldFolder, newFolder); err == nil {
+					finalVideo = "Episode/" + newTitleClean
+					newPathForDb := "Episode/" + newTitleClean
+					_, _ = db.Exec("UPDATE videos SET video_path = REPLACE(video_path, ?, ?) WHERE video_path LIKE ?",
+						oldVideoPath, newPathForDb, oldVideoPath+"/%")
+				}
+			}
+		}
+	} else {
+		if oldVideoPath != "" {
+			cleanOldVideo := filepath.Join(".", strings.TrimPrefix(oldVideoPath, "/"))
+			extVideo := filepath.Ext(cleanOldVideo)
+			newVideoFullPath := filepath.Join("movie", newTitleClean+extVideo)
+			if cleanOldVideo != newVideoFullPath {
+				if err := os.Rename(cleanOldVideo, newVideoFullPath); err == nil {
+					finalVideo = "/" + filepath.ToSlash(newVideoFullPath)
+				}
 			}
 		}
 	}
@@ -289,19 +308,8 @@ func (a *App) RenameVideo(id int, oldVideoPath string, newTitle string) error {
 			}
 		}
 	}
-	if oldScreenshotPath != "" {
-		cleanOldImg := filepath.Join(".", strings.TrimPrefix(oldScreenshotPath, "/"))
-		extImg := filepath.Ext(cleanOldImg)
-		newImgFullPath := filepath.Join("screenshots", newTitleClean+"_screenshot"+extImg)
-
-		if cleanOldImg != newImgFullPath {
-			if err := os.Rename(cleanOldImg, newImgFullPath); err == nil {
-				finalScreenshot = "/" + filepath.ToSlash(newImgFullPath)
-			}
-		}
-	}
 	query := `UPDATE videos SET title=?, artist=?, release_year=?, description=?, screenshot_path=?, cover_path=?, video_path=? WHERE id=?`
-	_, err = db.Exec(query, newTitle, artist, year, desc, finalScreenshot, finalCover, finalVideo, id)
+	_, err = db.Exec(query, newTitle, newArtist, year, desc, finalScreenshot, finalCover, finalVideo, id)
 
 	return err
 }
@@ -312,20 +320,31 @@ func (a *App) UpdateArtist(id int, artist string) error {
 }
 
 func (a *App) DeleteVideo(videoID int, videoPath string, coverPath string) error {
-	actualVideoPath := filepath.Join(".", strings.TrimPrefix(videoPath, "/"))
-	if _, err := os.Stat(actualVideoPath); err == nil {
-		err = os.Remove(actualVideoPath)
-		if err != nil {
-			println("Gagal menghapus file video:", err.Error())
+	var isGroup int
+	err := db.QueryRow("SELECT is_group FROM videos WHERE id = ?", videoID).Scan(&isGroup)
+	if err != nil {
+		return err
+	}
+
+	actualPath := filepath.Clean(videoPath)
+
+	if isGroup == 1 {
+		if _, err := os.Stat(actualPath); err == nil {
+			err = os.RemoveAll(actualPath)
+			if err != nil {
+				fmt.Println("Gagal hapus folder fisik:", err)
+			}
+		}
+		_, _ = db.Exec("DELETE FROM videos WHERE video_path LIKE ?", videoPath+"%")
+	} else {
+		if _, err := os.Stat(actualPath); err == nil {
+			_ = os.Remove(actualPath)
 		}
 	}
-	if !strings.Contains(coverPath, "default-cover.jpg") {
-		actualCoverPath := filepath.Join(".", strings.TrimPrefix(coverPath, "/"))
-		if _, err := os.Stat(actualCoverPath); err == nil {
-			os.Remove(actualCoverPath)
-		}
+	if coverPath != "" && !strings.Contains(coverPath, "default-cover.jpg") {
+		_ = os.Remove(filepath.Join(".", strings.TrimPrefix(coverPath, "/")))
 	}
-	_, err := db.Exec("DELETE FROM videos WHERE id = ?", videoID)
+	_, err = db.Exec("DELETE FROM videos WHERE id = ?", videoID)
 	return err
 }
 
@@ -366,17 +385,26 @@ func (a *App) OpenVideo(videoPath string) {
 	ex, _ := os.Executable()
 	exPath := filepath.Dir(ex)
 	cleanVirtualPath := strings.TrimPrefix(videoPath, "/")
-	absPath := filepath.Join(exPath, filepath.FromSlash(cleanVirtualPath))
+	var finalPath string
+	if filepath.IsAbs(cleanVirtualPath) {
+		finalPath = filepath.Clean(cleanVirtualPath)
+	} else {
+		finalPath = filepath.Join(exPath, filepath.FromSlash(cleanVirtualPath))
+	}
+	fmt.Printf("Mencoba membuka: %s\n", finalPath)
+	if _, err := os.Stat(finalPath); os.IsNotExist(err) {
+		fmt.Printf("Gagal: File tidak ditemukan di %s\n", finalPath)
+		return
+	}
 
 	var cmd *exec.Cmd
 
 	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/c", "start", "", absPath)
-		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", finalPath)
 	} else if runtime.GOOS == "darwin" {
-		cmd = exec.Command("open", absPath)
+		cmd = exec.Command("open", finalPath)
 	} else {
-		cmd = exec.Command("xdg-open", absPath)
+		cmd = exec.Command("xdg-open", finalPath)
 	}
 
 	err := cmd.Run()
@@ -386,8 +414,11 @@ func (a *App) OpenVideo(videoPath string) {
 }
 
 func (a *App) UpdateVideoLocation(videoID int) (string, error) {
+	var oldVideoPath string
+	_ = db.QueryRow("SELECT video_path FROM videos WHERE id = ?", videoID).Scan(&oldVideoPath)
+
 	newPath, err := wailsRuntime.OpenFileDialog(a.ctx, wailsRuntime.OpenDialogOptions{
-		Title: "Pilih Video Baru",
+		Title: "Select New Video Path",
 		Filters: []wailsRuntime.FileFilter{
 			{DisplayName: "Video Files", Pattern: "*.mp4;*.mkv;*.avi;*.mov"},
 		},
@@ -404,10 +435,8 @@ func (a *App) UpdateVideoLocation(videoID int) (string, error) {
 
 	fileName := filepath.Base(newPath)
 	destPath := filepath.Join("movie", fileName)
-
 	absNewPath, _ := filepath.Abs(newPath)
 	absDestPath, _ := filepath.Abs(destPath)
-
 	if strings.EqualFold(absNewPath, absDestPath) {
 		fmt.Println("File sudah berada di folder tujuan, skip copy agar tidak korup.")
 	} else {
@@ -428,8 +457,21 @@ func (a *App) UpdateVideoLocation(videoID int) (string, error) {
 			return "", fmt.Errorf("gagal menyalin file: %v", err)
 		}
 	}
-
-	dbPath := filepath.ToSlash(destPath)
+	if oldVideoPath != "" {
+		oldPathClean := filepath.Clean(strings.TrimPrefix(oldVideoPath, "/"))
+		absOldPath, _ := filepath.Abs(oldPathClean)
+		if !strings.EqualFold(absOldPath, absDestPath) {
+			if _, err := os.Stat(oldPathClean); err == nil {
+				bakPath := oldPathClean + ".bak"
+				os.Remove(bakPath)
+				os.Rename(oldPathClean, bakPath)
+			}
+		}
+	}
+	dbPath := destPath
+	if !strings.HasPrefix(dbPath, "/") {
+		dbPath = "/" + filepath.ToSlash(destPath)
+	}
 
 	newDuration := a.GetDuration(destPath)
 
@@ -472,4 +514,323 @@ func (a *App) GetDuration(videoPath string) string {
 		return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
 	}
 	return fmt.Sprintf("%02d:%02d", minutes, seconds)
+}
+func (a *App) GetLastPlayedVideos() ([]Video, error) {
+	query := `SELECT id, title, cover_path, video_path, duration, artist, description, release_year, screenshot_path, is_favorite, last_played_at 
+			  FROM videos 
+			  WHERE last_played_at != '' 
+			  ORDER BY last_played_at DESC`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var videos []Video
+	for rows.Next() {
+		var v Video
+		err := rows.Scan(&v.ID, &v.Title, &v.CoverPath, &v.VideoPath, &v.Duration, &v.Artist, &v.Description, &v.ReleaseYear, &v.ScreenshotPath, &v.IsFavorite, &v.LastPlayedAt)
+		if err == nil {
+			videos = append(videos, v)
+		}
+	}
+	return videos, nil
+}
+func (a *App) GetFavoriteVideos() ([]Video, error) {
+	query := `SELECT id, 
+	                 title, 
+	                 COALESCE(cover_path, ''), 
+	                 COALESCE(video_path, ''), 
+	                 COALESCE(duration, '00:00:00'), 
+	                 COALESCE(artist, ''), 
+	                 COALESCE(description, ''), 
+	                 COALESCE(release_year, ''), 
+	                 COALESCE(screenshot_path, ''), 
+	                 is_favorite, 
+	                 COALESCE(last_played_at, ''),
+	                 is_group
+	          FROM videos 
+	          WHERE is_favorite = 1 
+	          ORDER BY title ASC`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var videos []Video
+	for rows.Next() {
+		var v Video
+		err := rows.Scan(
+			&v.ID,
+			&v.Title,
+			&v.CoverPath,
+			&v.VideoPath,
+			&v.Duration,
+			&v.Artist,
+			&v.Description,
+			&v.ReleaseYear,
+			&v.ScreenshotPath,
+			&v.IsFavorite,
+			&v.LastPlayedAt,
+			&v.IsGroup,
+		)
+
+		if err == nil {
+			videos = append(videos, v)
+		} else {
+			fmt.Println("Gagal scan video di Favorite:", err)
+		}
+	}
+	return videos, nil
+}
+func (a *App) ToggleFavorite(id int) error {
+	var currentStatus int
+	err := db.QueryRow("SELECT is_favorite FROM videos WHERE id = ?", id).Scan(&currentStatus)
+	if err != nil {
+		return err
+	}
+	newStatus := 0
+	if currentStatus == 0 {
+		newStatus = 1
+	}
+
+	_, err = db.Exec("UPDATE videos SET is_favorite = ? WHERE id = ?", newStatus, id)
+	return err
+}
+func (a *App) GetVideos() ([]Video, error) {
+	query := `SELECT 
+				id, 
+				title, 
+				IFNULL(cover_path, ''), 
+				video_path, 
+				duration, 
+				artist, 
+				description, 
+				release_year, 
+				screenshot_path, 
+				is_favorite, 
+				IFNULL(last_played_at, ''), 
+				is_group 
+			  FROM videos 
+			  ORDER BY id DESC`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var videos []Video
+	for rows.Next() {
+		var v Video
+		err := rows.Scan(
+			&v.ID,
+			&v.Title,
+			&v.CoverPath,
+			&v.VideoPath,
+			&v.Duration,
+			&v.Artist,
+			&v.Description,
+			&v.ReleaseYear,
+			&v.ScreenshotPath,
+			&v.IsFavorite,
+			&v.LastPlayedAt,
+			&v.IsGroup,
+		)
+		if err == nil {
+			videos = append(videos, v)
+		} else {
+			fmt.Println("Error saat scan video:", err)
+		}
+	}
+	return videos, nil
+}
+
+func (a *App) MarkAsPlayed(id int) error {
+	currentTime := time.Now().Format("2006-01-02 15:04:05")
+	query := "UPDATE videos SET last_played_at = ? WHERE id = ?"
+	_, err := db.Exec(query, currentTime, id)
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *App) ClearPlaybackHistory() error {
+	query := "UPDATE videos SET last_played_at = ''"
+
+	_, err := db.Exec(query)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *App) MoveToEpisodeFolder() error {
+	sourcePath, err := wailsRuntime.OpenDirectoryDialog(a.ctx, wailsRuntime.OpenDialogOptions{
+		Title: "Select a folder that contains many movies.",
+	})
+	if err != nil || sourcePath == "" {
+		return err
+	}
+	ex, _ := os.Executable()
+	exPath := filepath.Dir(ex)
+	episodeBaseDir := filepath.Join(exPath, "Episode")
+	coverBaseDir := filepath.Join(exPath, "cover")
+	ffmpegPath := filepath.Join(exPath, "bin", "ffmpeg.exe")
+	ffprobePath := filepath.Join(exPath, "bin", "ffprobe.exe")
+
+	os.MkdirAll(episodeBaseDir, 0755)
+	os.MkdirAll(coverBaseDir, 0755)
+
+	folderName := filepath.Base(sourcePath)
+	targetPath := filepath.Join(episodeBaseDir, folderName)
+	err = os.Rename(sourcePath, targetPath)
+	if err != nil {
+		return fmt.Errorf("Gagal pindah folder: %v", err)
+	}
+	files, _ := os.ReadDir(targetPath)
+	var firstVideoRel string
+	var groupCoverPath string
+
+	for _, f := range files {
+		if !f.IsDir() && isVideoFile(f.Name()) {
+			videoFileAbs := filepath.Join(targetPath, f.Name())
+			videoFileRel := filepath.ToSlash(filepath.Join("Episode", folderName, f.Name()))
+			durationStr := "00:00:00"
+			cmdProbe := exec.Command(ffprobePath, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", "-sexagesimal", videoFileAbs)
+			cmdProbe.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+			out, err := cmdProbe.Output()
+
+			if err == nil {
+				rawDuration := strings.TrimSpace(string(out))
+				if len(rawDuration) >= 8 {
+					durationStr = rawDuration[:8]
+				}
+			}
+			thumbName := strings.TrimSuffix(f.Name(), filepath.Ext(f.Name())) + ".jpg"
+			thumbDest := filepath.Join(coverBaseDir, thumbName)
+			dbCoverPath := "/cover/" + thumbName
+
+			cmd := exec.Command(ffmpegPath, "-y", "-i", videoFileAbs, "-ss", "00:00:02.000", "-vframes", "1", thumbDest)
+			cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+			_ = cmd.Run()
+			queryEp := `INSERT INTO videos (title, video_path, cover_path, duration, is_group) 
+                        VALUES (?, ?, ?, ?, 0)`
+			_, err = db.Exec(queryEp, f.Name(), videoFileRel, dbCoverPath, durationStr)
+
+			if firstVideoRel == "" {
+				firstVideoRel = videoFileRel
+				groupCoverPath = dbCoverPath
+			}
+		}
+	}
+	if firstVideoRel != "" {
+		groupPathRel := filepath.ToSlash(filepath.Join("Episode", folderName))
+		queryGroup := `INSERT OR IGNORE INTO videos (title, video_path, cover_path, is_group) 
+                       VALUES (?, ?, ?, 1)`
+		_, _ = db.Exec(queryGroup, folderName, groupPathRel, groupCoverPath)
+	}
+
+	return nil
+}
+
+func isVideoFile(filename string) bool {
+	ext := strings.ToLower(filepath.Ext(filename))
+	return ext == ".mp4" || ext == ".mkv" || ext == ".avi" || ext == ".mov"
+}
+
+func (a *App) AutoScanEpisodes() error {
+	scanMutex.Lock()
+	defer scanMutex.Unlock()
+	if db == nil {
+		return nil
+	}
+
+	ex, _ := os.Executable()
+	exPath := filepath.Dir(ex)
+	episodeBaseDir := filepath.Join(exPath, "Episode")
+	coverBaseDir := filepath.Join(exPath, "cover")
+	ffprobePath := filepath.Join(exPath, "bin", "ffprobe.exe")
+	ffmpegPath := filepath.Join(exPath, "bin", "ffmpeg.exe")
+
+	os.MkdirAll(episodeBaseDir, 0755)
+	os.MkdirAll(coverBaseDir, 0755)
+
+	folders, err := os.ReadDir(episodeBaseDir)
+	if err != nil {
+		return err
+	}
+
+	for _, f := range folders {
+		if f.IsDir() {
+			folderName := f.Name()
+			folderPathRel := filepath.ToSlash(filepath.Join("Episode", folderName))
+			targetPathAbs := filepath.Join(episodeBaseDir, folderName)
+			var count int
+			_ = db.QueryRow("SELECT COUNT(*) FROM videos WHERE video_path = ?", folderPathRel).Scan(&count)
+			groupExists := (count > 0)
+
+			files, _ := os.ReadDir(targetPathAbs)
+			var firstThumb string
+			for _, file := range files {
+				if !file.IsDir() && isVideoFile(file.Name()) {
+					videoFileAbs := filepath.Join(targetPathAbs, file.Name())
+					videoFileRel := filepath.ToSlash(filepath.Join(folderPathRel, file.Name()))
+
+					var videoExists int
+					db.QueryRow("SELECT COUNT(*) FROM videos WHERE video_path = ?", videoFileRel).Scan(&videoExists)
+
+					if videoExists == 0 {
+						durationStr := "00:00:00"
+						cmdProbe := exec.Command(ffprobePath, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", "-sexagesimal", videoFileAbs)
+						cmdProbe.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+						out, err := cmdProbe.Output()
+
+						if err == nil {
+							raw := strings.TrimSpace(string(out))
+							if len(raw) >= 8 {
+								durationStr = raw[:8]
+							}
+						}
+
+						thumbName := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name())) + "_" + fmt.Sprint(time.Now().Unix()) + ".jpg"
+						thumbDest := filepath.Join(coverBaseDir, thumbName)
+						dbCoverPath := "/cover/" + thumbName
+
+						cmd := exec.Command(ffmpegPath, "-y", "-i", videoFileAbs, "-ss", "00:00:02.000", "-vframes", "1", thumbDest)
+						cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+						_ = cmd.Run()
+						_, _ = db.Exec("INSERT OR IGNORE INTO videos (title, video_path, cover_path, duration, is_group) VALUES (?, ?, ?, ?, 0)",
+							file.Name(), videoFileRel, dbCoverPath, durationStr)
+
+						if firstThumb == "" {
+							firstThumb = dbCoverPath
+						}
+					} else {
+						if firstThumb == "" {
+							_ = db.QueryRow("SELECT cover_path FROM videos WHERE video_path = ?", videoFileRel).Scan(&firstThumb)
+						}
+					}
+				}
+			}
+			if !groupExists && firstThumb != "" {
+				result, insertErr := db.Exec("INSERT OR IGNORE INTO videos (title, video_path, cover_path, is_group) VALUES (?, ?, ?, 1)",
+					folderName, folderPathRel, firstThumb)
+
+				if insertErr == nil {
+					rows, _ := result.RowsAffected()
+					if rows > 0 {
+						fmt.Printf("✓ Folder Episode Baru Terdaftar: %s\n", folderName)
+					}
+				}
+			}
+		}
+	}
+	return nil
 }
