@@ -36,10 +36,9 @@ You can manually add files to the **Episode** or **movie** folder without openin
 │ ├── [Season 1 Name]/          # Example: "Naruto S1" (Contains a collection of episode files)
 │ ├── [Season 2 Name]/          # Example: "One Piece"
 ├── cover/                      # Folder for images
-│ ├── cover_video_1.jpg           # ffmpeg extracted images
-│ ├── cover_video_2.jpg           # Images displayed as cards in the app
+│ ├── cover_video_1.jpg         # ffmpeg extracted image
+│ ├── cover_video_2.jpg         # Image displayed as a card in the app
 ```
-
 ## 🛠️ Installation (Development)
 
 ### Prerequisites
