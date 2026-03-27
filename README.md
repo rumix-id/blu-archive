@@ -30,8 +30,8 @@ You can manually add files to the **Episode** or **movie** folder without openin
 │ ├── ffmpeg.exe                # FFmpeg for video processing
 │ ├── ffprobe.exe               # FFprobe for duration checking
 ├── movie/                      # Storage folder for individual videos or movies
-│ ├── film_satuan_01.mp4        # Physical file of imported videos
-│ ├── film_satuan_02.mkv
+│ ├── single film_01.mp4        # Physical file of imported videos
+│ ├── single film_02.mkv
 ├── Episode/                    # Parent folder for movie series (Movie Season)
 │ ├── [Season 1 Name]/          # Example: "Naruto S1" (Contains a collection of episode files)
 │ ├── [Season 2 Name]/          # Example: "One Piece"
