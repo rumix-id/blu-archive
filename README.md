@@ -24,25 +24,20 @@
 ## 📂 Program Structure Explanation
 You can manually add files to the **Episode** or **movie** folder without opening the program.
 ```
-|
-|-- blu-archive.exe             # Main application file from the build (adjust to the original name)
-|-- data.db                     # SQLite database for storing video, episode, and duration lists
-|
-|-- bin/                        # External tool folder
-| |-- ffmpeg.exe                # Used to extract video cover images
-| |-- ffprobe.exe               # Used to read video duration and metadata
-|
-|-- Movie/                      # Storage folder for individual videos or movies
-| |-- film_satuan_01.mp4        # Physical file of imported videos
-| |-- film_satuan_02.mkv
-|
-|-- Episode/                    # Parent folder for movie series (Movie Season)
-| |-- [Season 1 Name]/          # Example: "Naruto S1" (Contains a collection of episode files)
-| |-- [Season 2 Name]/          # Example: "One Piece"
-|
-|-- cover/                      # Folder for images
-|-- cover_video_1.jpg           # ffmpeg extracted images
-|-- cover_video_2.jpg           # Images displayed as cards in the app
+├── blu-archive.exe             # Main application file from the build (adjust to the original name)
+├── data.db                     # SQLite database for storing video, episode, and duration lists
+├── bin/                        # External tool folder
+│ ├── ffmpeg.exe                # FFmpeg for video processing
+│ ├── ffprobe.exe               # FFprobe for duration checking
+├── movie/                      # Storage folder for individual videos or movies
+│ ├── film_satuan_01.mp4        # Physical file of imported videos
+│ ├── film_satuan_02.mkv
+├── Episode/                    # Parent folder for movie series (Movie Season)
+│ ├── [Season 1 Name]/          # Example: "Naruto S1" (Contains a collection of episode files)
+│ ├── [Season 2 Name]/          # Example: "One Piece"
+├── cover/                      # Folder for images
+│ ├── cover_video_1.jpg           # ffmpeg extracted images
+│ ├── cover_video_2.jpg           # Images displayed as cards in the app
 ```
 
 ## 🛠️ Installation (Development)
